@@ -1,44 +1,21 @@
-import {
-    NavigationMenu,
-    NavigationMenuContent,
-    NavigationMenuIndicator,
-    NavigationMenuItem,
-    NavigationMenuLink,
-    NavigationMenuList,
-    NavigationMenuTrigger,
-    NavigationMenuViewport,
-  } from "@/components/ui/navigation-menu"
-import { Link } from "react-router-dom";
+import profile from "@/assets/default.jpeg";
+import { Button } from "@/components/ui/button";
 import {
     Card,
-    CardAction,
     CardContent,
     CardDescription,
-    CardFooter,
     CardHeader,
-    CardTitle,
-  } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import profile from "@/assets/default.jpeg"
+    CardTitle
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import Navbar from "./components/navbar";
 
 
 function Settings() {
     return (
         <div className="flex flex-col items-center">
-            <NavigationMenu className="">
-                <NavigationMenuList>
-                    <NavigationMenuItem>
-                    <NavigationMenuTrigger>
-                        <Link to="/home">Home</Link>
-                    </NavigationMenuTrigger>
-                    <NavigationMenuTrigger>
-                        <Link to="/settings">Settings</Link>
-                    </NavigationMenuTrigger>
-                    </NavigationMenuItem>
-                </NavigationMenuList>
-            </NavigationMenu>
+            <Navbar />
 
             <div className="flex flex-row justify-center items-center gap-50 h-screen">
             <div className="flex flex-col">

@@ -1,23 +1,12 @@
 import {
-    NavigationMenu,
-    NavigationMenuContent,
-    NavigationMenuIndicator,
-    NavigationMenuItem,
-    NavigationMenuLink,
-    NavigationMenuList,
-    NavigationMenuTrigger,
-    NavigationMenuViewport,
-  } from "@/components/ui/navigation-menu"
-import { Link } from "react-router-dom";
-import {
     Card,
-    CardAction,
     CardContent,
     CardDescription,
-    CardFooter,
     CardHeader,
-    CardTitle,
-  } from "@/components/ui/card"
+    CardTitle
+} from "@/components/ui/card";
+
+import Navbar from "./components/navbar";
 
   const blogPosts = [
     {
@@ -36,18 +25,7 @@ import {
 function Home() {
     return (
         <div className="flex flex-col justify-center items-center">
-            <NavigationMenu className="">
-                <NavigationMenuList>
-                    <NavigationMenuItem>
-                    <NavigationMenuTrigger>
-                        <Link to="/home">Home</Link>
-                    </NavigationMenuTrigger>
-                    <NavigationMenuTrigger>
-                        <Link to="/settings">Settings</Link>
-                    </NavigationMenuTrigger>
-                    </NavigationMenuItem>
-                </NavigationMenuList>
-            </NavigationMenu>
+            <Navbar />
             <div className="flex flex-col gap-12 mt-12">
                 {blogPosts.map(post => (
                     <Card key={post.username}>

@@ -2,21 +2,18 @@ import Login from "./login";
 import Home from "./home";
 import Settings from "./settings";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import ProtectedRoute from "./components/protectedroutes";
 
 function App() {
 
   return (
-    <div>
       <Router>
         <Routes>
           <Route path="/" element={<Login />} />
-          <Route path="/home" element={<Home />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         </Routes>
       </Router>
-      
-    </div>
-    
   )
 }
 

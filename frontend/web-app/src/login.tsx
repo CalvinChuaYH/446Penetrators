@@ -5,26 +5,71 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useState } from "react"
+import { useNavigate } from "react-router-dom";
 
 function Login() {
+  const navigate = useNavigate();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUsername(e.target.value);
+  }
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleLogin(e as unknown as React.FormEvent);
+    }
+  }
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const response = await fetch('http://localhost:5000/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // console.log('Login successful:', data);
+        localStorage.setItem('token', data.token);
+        navigate('/home');
+      } else {
+        // console.error('Login failed:', response.statusText);
+        // Handle login failure (e.g., show error message)
+      }
+    } catch (error) {
+      console.error('Error during login:', error);
+    }
+  }
+
   return (
     <div className="bg-gray-950 text-white min-h-screen flex flex-col items-center justify-center">
         <h1 className="text-3xl text-center py-8">Welcome to <span className="text-blue-500 font-extrabold">BestBlogs</span>.</h1>
         <Card className="w-full max-w-md bg-[#171717] border-[#373737]">
         <CardContent>
           <div className="flex flex-col gap-3 text-white">
-            <form className="flex flex-col gap-6" onSubmit={() => {}}>
+            <form className="flex flex-col gap-6" onSubmit={handleLogin}>
                 <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
+                    <Label htmlFor="email">Username</Label>
                     <Input 
                     className="border-[#373737] bg-[#373737]" 
-                    id="email" 
-                    type="email" 
-                    placeholder="test@example.com" 
+                    id="username" 
+                    type="text" 
+                    placeholder="Enter your username" 
                     required
-                    value={""}
-                    onChange={(e) => {}}
-                    onKeyDown={() => {}}
+                    value={username}
+                    onChange={handleUsernameChange}
+                    onKeyDown={handleKeyDown}
                     />
                 </div>
 
@@ -35,9 +80,9 @@ function Login() {
                     id="password" 
                     type="password" 
                     required
-                    value={""}
-                    onChange={(e) => {}}
-                    onKeyDown={() => {}}
+                    value={password}
+                    onChange={handlePasswordChange}
+                    onKeyDown={handleKeyDown}
                     />
                 </div>
                 
