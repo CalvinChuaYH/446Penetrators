@@ -10,16 +10,41 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import Navbar from "./components/navbar";
-
+import { useState, useEffect } from "react";
 
 function Settings() {
+    const [profilePic, setProfilePic] = useState(profile);
+    const [username, setUsername] = useState("");
+    useEffect(() => {
+        async function fetchUser() {
+            try {
+                const res = await fetch("http://localhost:5000/api/profile", {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem("token")}`
+                    },
+                });
+                const data = await res.json();
+
+                if (data.profile_pic) {
+                    setProfilePic(data.profile_pic);
+                }
+                if (data.username) {
+                    setUsername(data.username);
+                }
+            } catch (error) {
+                // console.error("Error fetching user data:", error);
+            }
+        }
+        fetchUser();
+    }, []);
+
     return (
         <div className="flex flex-col items-center">
             <Navbar />
 
             <div className="flex flex-row justify-center items-center gap-50 h-screen">
             <div className="flex flex-col">
-                <img src={profile} alt="profile" />
+                <img src={profilePic} alt="profile" />
                 <Button variant="outline" className="mt-4">Change Profile Picture</Button>
             </div>
 

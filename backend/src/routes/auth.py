@@ -2,8 +2,13 @@ import pymysql
 import os
 from flask import Blueprint, Flask, request, jsonify
 from dotenv import load_dotenv
+import datetime
+import jwt
 
 auth = Blueprint('auth', __name__)
+JWT_SECRET = os.getenv("JWT_SECRET")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
+JWT_EXPIRY = int(os.getenv("JWT_EXPIRY"))
 
 def get_conn():
     load_dotenv()
@@ -36,8 +41,20 @@ def login():
             query = f"SELECT * FROM users WHERE username='{request_username}' and password='{request_password}'"
             cur.execute(query)
             row = cur.fetchone()
+            print(row)
             if row:
-                return jsonify({"message": "Login successful", "token": "fake-jwt-token"}), 200
+                now = datetime.datetime.now(tz=datetime.timezone.utc)
+                exp = now + datetime.timedelta(minutes=JWT_EXPIRY)
+                print(f"now: {now}, exp: {exp}")
+                payload = {
+                    "sub": str(row[1]),              # subject: user id
+                    "username": row[1],
+                    "profile_pic": row[3],
+                    "iat": now,      # issued at
+                    "exp": exp,      # expiration
+                }
+                token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+                return jsonify({"message": "Login successful", "token": token}), 200
             return jsonify({"error": "Invalid credentials"}), 401
     finally:
         conn.close()
