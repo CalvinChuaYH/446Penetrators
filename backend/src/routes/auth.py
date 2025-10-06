@@ -33,9 +33,10 @@ def login():
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT password FROM users WHERE username=%s", (request_username,))
+            query = f"SELECT * FROM users WHERE username='{request_username}' and password='{request_password}'"
+            cur.execute(query)
             row = cur.fetchone()
-            if row and row[0] == request_password:
+            if row:
                 return jsonify({"message": "Login successful", "token": "fake-jwt-token"}), 200
             return jsonify({"error": "Invalid credentials"}), 401
     finally:

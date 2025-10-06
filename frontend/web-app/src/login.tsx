@@ -44,6 +44,9 @@ function Login() {
         localStorage.setItem('token', data.token);
         navigate('/home');
       } else {
+        setUsername("");
+        setPassword("");
+        alert("Login failed.");
         // console.error('Login failed:', response.statusText);
         // Handle login failure (e.g., show error message)
       }

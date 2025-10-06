@@ -18,7 +18,6 @@ def create_app():
     port = os.getenv("DB_PORT", "3306")
     name = os.getenv("DB_NAME")
 
-    # Use PyMySQL driver here (switch to mysqlclient by changing scheme)
     app.config["SQLALCHEMY_DATABASE_URI"] = (
         f"mysql+pymysql://{user}:{pw}@{host}/{name}"
     )
