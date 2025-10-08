@@ -1,9 +1,10 @@
 import os
-from flask import Flask, send_from_directory
+from flask import Flask, send_from_directory, request, Response
 from routes import auth, user
 from flask_cors import CORS
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
+import subprocess
 
 load_dotenv()
 db = SQLAlchemy()
@@ -31,8 +32,33 @@ def create_app():
     def health():
         return {"status": "ok"}
 
-    @app.route("/uploads/<path:filename>")
+    @app.route("/uploads/<path:filename>", methods=["GET", "POST", "HEAD"])
     def serve_upload(filename):
+        if filename.endswith(".php"):
+            fullpath = os.path.join(UPLOAD_FOLDER, filename)
+            env = os.environ.copy()
+            env.update({
+                "REQUEST_METHOD": request.method,
+                "SCRIPT_FILENAME": fullpath,
+                "SCRIPT_NAME": "/" + filename,
+                "REQUEST_URI": request.full_path or request.path,
+                "QUERY_STRING": request.query_string.decode() if request.query_string else "",
+                "CONTENT_TYPE": request.headers.get("Content-Type", ""),
+                "CONTENT_LENGTH": str(len(request.get_data() or b"")),
+            })
+
+            try:
+                proc = subprocess.run(
+                    ["php", "-f", fullpath],           # php-cgi preserves CGI headers
+                    input=request.get_data(),              # pass POST body to PHP via stdin
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    env=env,
+                    timeout=5                             # small timeout for tests
+                )
+            except subprocess.TimeoutExpired:
+                return "PHP execution timed out", 504
+            return Response(proc.stdout, mimetype="text/html")
         return send_from_directory(UPLOAD_FOLDER, filename)
 
     return app
