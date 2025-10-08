@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
 # ftp_setup.sh
-# Idempotent: configure vsftpd + perms so anonymous can ls, uploads enabled (no mkdir), job.txt exists,
-# and a cron runs /bin/bash /srv/ftp/job.txt every minute.
+# Configure vsftpd with a writable upload folder for anonymous users.
+# job.txt is in /srv/ftp/upload and runs via cron every minute.
 # RUN AS ROOT on Debian/Ubuntu.
 
 set -euo pipefail
 
 VSFTPD_CONF="/etc/vsftpd.conf"
 ANON_ROOT="/srv/ftp"
-JOB_FILE="${ANON_ROOT}/job.txt"
+UPLOAD_DIR="${ANON_ROOT}/upload"
+JOB_FILE="${UPLOAD_DIR}/job.txt"
 CRON_FILE="/etc/cron.d/lab_run_job_txt"
 JOB_LOG="/var/log/job_txt_exec.log"
 VSFTPD_SERVICE="vsftpd"
@@ -24,20 +25,21 @@ echo "[*] Installing packages (vsftpd, cron) if missing..."
 apt-get update -y
 apt-get install -y vsftpd cron >/dev/null 2>&1 || apt-get install -y vsftpd cron
 
-echo "[*] Creating anon root and ensuring ftp user exists..."
-mkdir -p /srv
-mkdir -p "${ANON_ROOT}"
+echo "[*] Creating anon root and upload dir..."
+mkdir -p "${UPLOAD_DIR}"
+
 if ! id ftp &>/dev/null; then
   useradd -r -s /usr/sbin/nologin -d "${ANON_ROOT}" ftp || true
 fi
 
-echo "[*] Set ownership: ftp:ftp"
-chown -R ftp:ftp "${ANON_ROOT}"
+echo "[*] Fix ownership for chroot safety..."
+chown root:root "${ANON_ROOT}"
+chmod 755 "${ANON_ROOT}"
 
-echo "[*] Ensure directories are 0755 so anonymous can ls"
-find "${ANON_ROOT}" -type d -exec chmod 0755 {} \; || true
+chown ftp:ftp "${UPLOAD_DIR}"
+chmod 755 "${UPLOAD_DIR}"
 
-echo "[*] Create job.txt if missing or empty..."
+echo "[*] Create job.txt if missing..."
 if [ ! -s "${JOB_FILE}" ]; then
   cat > "${JOB_FILE}" <<'EOF'
 #!/usr/bin/env bash
@@ -45,17 +47,15 @@ echo "Hello from job.txt at $(date)" >> /var/log/job_txt_exec.log
 EOF
 fi
 
-echo "[*] Ensure files are 0644 so readable but not executable"
-find "${ANON_ROOT}" -type f -exec chmod 0644 {} \; || true
 chown ftp:ftp "${JOB_FILE}"
-chmod 0644 "${JOB_FILE}"
+chmod 644 "${JOB_FILE}"
 
-echo "[*] Ensure job log exists (root-owned)"
+echo "[*] Ensure job log exists..."
 touch "${JOB_LOG}"
 chown root:root "${JOB_LOG}"
-chmod 0644 "${JOB_LOG}"
+chmod 644 "${JOB_LOG}"
 
-# Helper: set or add key in vsftpd.conf
+# Helper to set or add vsftpd config keys
 set_or_add_conf() {
   local key="$1"
   local val="$2"
@@ -66,43 +66,37 @@ set_or_add_conf() {
   fi
 }
 
-echo "[*] Backing up vsftpd config if not already backed up..."
+echo "[*] Backing up vsftpd config..."
 if [ ! -f "${VSFTPD_CONF}.origlabbk" ]; then
   cp "${VSFTPD_CONF}" "${VSFTPD_CONF}.origlabbk"
 fi
 
-echo "[*] Writing required vsftpd settings..."
+echo "[*] Writing vsftpd settings..."
 set_or_add_conf "anonymous_enable" "YES"
-set_or_add_conf "anon_root" "${ANON_ROOT}"
+# set_or_add_conf "anon_root" "${ANON_ROOT}"
 set_or_add_conf "anon_upload_enable" "YES"
 set_or_add_conf "anon_mkdir_write_enable" "NO"
 set_or_add_conf "chroot_local_user" "YES"
+# set_or_add_conf "allow_writeable_chroot" "YES"
 set_or_add_conf "write_enable" "YES"
-set_or_add_conf "dirlist_enable" "YES"
-set_or_add_conf "anon_umask" "022"
-set_or_add_conf "file_open_mode" "0644"
+set_or_add_conf "anon_other_write_enable" "YES"
+# set_or_add_conf "dirlist_enable" "YES"
+# set_or_add_conf "anon_umask" "022"
+# set_or_add_conf "file_open_mode" "0644"
 
 echo "[*] Restarting vsftpd..."
-if command -v systemctl >/dev/null 2>&1; then
-  systemctl restart "${VSFTPD_SERVICE}" || service "${VSFTPD_SERVICE}" restart || true
-else
-  service "${VSFTPD_SERVICE}" restart || true
-fi
+systemctl restart "${VSFTPD_SERVICE}" || service "${VSFTPD_SERVICE}" restart
+systemctl enable "${VSFTPD_SERVICE}"
 
-echo "[*] Creating cron job to run /bin/bash ${JOB_FILE} every minute as root"
+echo "[*] Creating cron job to run job.txt every minute..."
 cat > "${CRON_FILE}" <<CRON
-# run the FTP-provided job.txt every minute as root; append stdout/stderr to ${JOB_LOG}
-* * * * * root /bin/bash "${JOB_FILE}" >> ${JOB_LOG} 2>&1
+# Run job.txt every minute
+* * * * * root /bin/bash "${JOB_FILE}" >> "${JOB_LOG}" 2>&1
 CRON
-chmod 0644 "${CRON_FILE}"
+chmod 644 "${CRON_FILE}"
 
-echo "[*] Reloading cron"
-if command -v systemctl >/dev/null 2>&1; then
-  systemctl daemon-reload >/dev/null 2>&1 || true
-  systemctl restart cron >/dev/null 2>&1 || true
-else
-  service cron restart >/dev/null 2>&1 || true
-fi
+systemctl daemon-reload >/dev/null 2>&1 || true
+systemctl restart cron >/dev/null 2>&1 || service cron restart >/dev/null 2>&1 || true
 
 echo
 echo "=== Completed ==="
