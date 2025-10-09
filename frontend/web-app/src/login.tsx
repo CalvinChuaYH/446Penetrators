@@ -59,8 +59,8 @@ function Login() {
   }
 
   return (
-    <div className="bg-gray-950 text-white min-h-screen flex flex-col items-center justify-center">
-        <h1 className="text-3xl text-center py-8">Welcome to <span className="text-blue-500 font-extrabold">BestBlogs</span>.</h1>
+    <div className="bg-gray-200 text-white min-h-screen flex flex-col items-center justify-center">
+        <h1 className="text-3xl text-center py-8 text-black">Welcome to <span className="text-blue-500 font-extrabold">BestBlogs</span>.</h1>
         <Card className="w-full max-w-md bg-[#171717] border-[#373737]">
         <CardContent>
           <div className="flex flex-col gap-3 text-white">

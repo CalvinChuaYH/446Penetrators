@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: localhost:5000
+
+# TODO:
+# implement encoding and decoding in login page
+# ensure upload functionality only accepts images
