@@ -27,6 +27,9 @@ function Login() {
     }
   }
 
+  const encodedUsername = btoa(username); // built-in browser function
+  const encodedPassword = btoa(password);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -35,7 +38,7 @@ function Login() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username: encodedUsername, password: encodedPassword }),
       });
 
       if (response.ok) {

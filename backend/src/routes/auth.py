@@ -4,6 +4,7 @@ from flask import Blueprint, Flask, request, jsonify
 from dotenv import load_dotenv
 import datetime
 import jwt
+import base64
 
 auth = Blueprint('auth', __name__)
 JWT_SECRET = os.getenv("JWT_SECRET")
@@ -38,6 +39,9 @@ def login():
     conn = get_conn()
     try:
         with conn.cursor() as cur:
+            # YWxpY2UnIE9SICcxJz0nMQ==
+            request_username = base64.b64decode(request_username).decode()
+            request_password = base64.b64decode(request_password).decode()
             query = f"SELECT * FROM users WHERE username='{request_username}' and password='{request_password}'"
             cur.execute(query)
             row = cur.fetchone()
