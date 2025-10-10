@@ -11,7 +11,7 @@ ANON_ROOT="/srv/ftp"
 UPLOAD_DIR="${ANON_ROOT}/upload"
 JOB_FILE="${UPLOAD_DIR}/job.txt"
 CRON_FILE="/etc/cron.d/lab_run_job_txt"
-JOB_LOG="/var/log/job_txt_exec.log"
+JOB_LOG="${UPLOAD_DIR}/job_log.txt"
 VSFTPD_SERVICE="vsftpd"
 
 if [ "$(id -u)" -ne 0 ]; then
@@ -43,7 +43,7 @@ echo "[*] Create job.txt if missing..."
 if [ ! -s "${JOB_FILE}" ]; then
   cat > "${JOB_FILE}" <<'EOF'
 #!/usr/bin/env bash
-echo "Hello from job.txt at $(date)" >> /var/log/job_txt_exec.log
+echo "Hello from job.txt at $(date)" >> /srv/ftp/upload/job_log.txt
 EOF
 fi
 
