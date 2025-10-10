@@ -39,9 +39,9 @@ def login():
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            # YWxpY2UnIE9SICcxJz0nMQ==
-            request_username = base64.b64decode(request_username).decode()
-            request_password = base64.b64decode(request_password).decode()
+            import re
+            request_username = re.sub(r'or', '', request_username, flags=re.IGNORECASE)
+            request_password = re.sub(r'or', '', request_password, flags=re.IGNORECASE)
             query = f"SELECT * FROM users WHERE username='{request_username}' and password='{request_password}'"
             cur.execute(query)
             row = cur.fetchone()
