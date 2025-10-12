@@ -7,11 +7,13 @@ from jwt import ExpiredSignatureError, InvalidTokenError
 from werkzeug.utils import secure_filename
 
 user = Blueprint('user', __name__)
+load_dotenv()
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")  
+print(f"Upload folder: {UPLOAD_FOLDER}")
+print(f"Base folder: {BASE_DIR}")
 
 def get_conn():
-    load_dotenv()
     user = os.getenv("DB_USER")
     pw = os.getenv("DB_PASSWORD")
     host = os.getenv("DB_HOST", "127.0.0.1")
@@ -107,7 +109,6 @@ def update_profile_pic():
         return jsonify({"error": "No file uploaded"}), 400
     
     file_type = file.content_type
-    print(file_type)
     if file_type not in ['image/png', 'image/jpeg']:
         return jsonify({"error": "Invalid file type. Only PNG and JPEG are allowed."}), 400
     

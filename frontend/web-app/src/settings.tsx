@@ -13,12 +13,13 @@ import Navbar from "./components/navbar";
 import { useState, useEffect, useRef } from "react";
 
 function Settings() {
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
     const [profilePic, setProfilePic] = useState(profile);
     const [username, setUsername] = useState("");
     useEffect(() => {
         async function fetchUser() {
             try {
-                const res = await fetch("http://localhost:5000/api/profile", {
+                const res = await fetch(`${apiUrl}/api/profile`, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem("token")}`
                     },
@@ -56,7 +57,7 @@ function Settings() {
         const formData = new FormData();
         formData.append("profile_pic", file);
         formData.append("username", username);
-        const res = await fetch("http://localhost:5000/api/upload", {
+        const res = await fetch(`${apiUrl}/api/upload`, {
           method: "POST",
           headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
           body: formData,

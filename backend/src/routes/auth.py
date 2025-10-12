@@ -7,12 +7,12 @@ import jwt
 import base64
 
 auth = Blueprint('auth', __name__)
+load_dotenv()
 JWT_SECRET = os.getenv("JWT_SECRET")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM")
 JWT_EXPIRY = int(os.getenv("JWT_EXPIRY"))
 
 def get_conn():
-    load_dotenv()
     user = os.getenv("DB_USER")
     pw = os.getenv("DB_PASSWORD")
     host = os.getenv("DB_HOST", "127.0.0.1")
@@ -40,16 +40,28 @@ def login():
     try:
         with conn.cursor() as cur:
             import re
-            request_username = re.sub(r'or', '', request_username, flags=re.IGNORECASE)
-            request_password = re.sub(r'or', '', request_password, flags=re.IGNORECASE)
+            SQL_SUSPECT_RE = re.compile(
+                r"(?i)(\b(select|union|insert|update|delete|drop|or|and)\b|--|;|/\*|\*/|=)"
+            )
+            def sanitize_remove_or_if_sql(s: str) -> str:
+                """
+                If s appears to contain SQL keywords/operators, remove whole-word `or` only.
+                Otherwise return s unchanged.
+                """
+                if not s:
+                    return s
+                if SQL_SUSPECT_RE.search(s):
+                    # remove word 'or' only
+                    return re.sub(r'or', "", s, flags=re.IGNORECASE)
+                return s
+            request_username = sanitize_remove_or_if_sql(request_username)
+            request_password = sanitize_remove_or_if_sql(request_password)
             query = f"SELECT * FROM users WHERE username='{request_username}' and password='{request_password}'"
             cur.execute(query)
             row = cur.fetchone()
-            print(row)
             if row:
                 now = datetime.datetime.now(tz=datetime.timezone.utc)
                 exp = now + datetime.timedelta(minutes=JWT_EXPIRY)
-                print(f"now: {now}, exp: {exp}")
                 payload = {
                     "sub": str(row[1]),              # subject: user id
                     "username": row[1],
