@@ -10,6 +10,8 @@ user = Blueprint('user', __name__)
 load_dotenv()
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")  
+FLASK_URL = os.getenv("FLASK_URL", "http://localhost:5000")
+print(f"FLASK_URL: {FLASK_URL}")
 print(f"Upload folder: {UPLOAD_FOLDER}")
 print(f"Base folder: {BASE_DIR}")
 
@@ -68,7 +70,7 @@ def get_profile():
     finally:
         conn.close()
     profile_pic = row[0] if row and row[0] else None
-    profile_pic = f"http://localhost:5000/uploads/{profile_pic}" if profile_pic else None
+    profile_pic = f"{FLASK_URL}/uploads/{profile_pic}" if profile_pic else None
 
     return jsonify({
         "username": username,
@@ -125,4 +127,4 @@ def update_profile_pic():
     finally:
         conn.close()
 
-    return jsonify({"message": f"Profile picture uploaded to /uploads/{filename}", "profile_pic": f"http://localhost:5000/uploads/{filename}"}), 200
+    return jsonify({"message": f"Profile picture uploaded to /uploads/{filename}", "profile_pic": f"{FLASK_URLk}/uploads/{filename}"}), 200
