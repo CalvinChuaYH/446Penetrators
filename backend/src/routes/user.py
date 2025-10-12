@@ -127,4 +127,4 @@ def update_profile_pic():
     finally:
         conn.close()
 
-    return jsonify({"message": f"Profile picture uploaded to /uploads/{filename}", "profile_pic": f"{FLASK_URLk}/uploads/{filename}"}), 200
+    return jsonify({"message": f"Profile picture uploaded to /uploads/{filename}", "profile_pic": f"{FLASK_URL}/uploads/{filename}"}), 200
