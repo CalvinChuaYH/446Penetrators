@@ -1,3 +1,4 @@
+DROP DATABASE IF EXISTS bestblogs;
 CREATE DATABASE bestblogs;
 USE bestblogs;
 

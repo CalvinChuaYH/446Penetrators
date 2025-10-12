@@ -4,12 +4,11 @@ set -euo pipefail
 #####################################
 #           CONFIGURATION           #
 #####################################
-PROJECT_ROOT="$(pwd)"                    # Run this script from your repo root
-mkdir -p "$PROJECT_ROOT/app"
-FRONTEND_DIR="$PROJECT_ROOT/app/frontend"
-BACKEND_DIR="$PROJECT_ROOT/app/backend"
-SQL_FILE="$PROJECT_ROOT/app/setup.sql"   # Path to your SQL setup script
-VENV_DIR="$PROJECT_ROOT/app/backend/venv"
+PROJECT_ROOT="$(pwd)"                    
+FRONTEND_DIR="$PROJECT_ROOT/frontend"
+BACKEND_DIR="$PROJECT_ROOT/backend"
+SQL_FILE="$PROJECT_ROOT/setup.sql"   
+VENV_DIR="$PROJECT_ROOT/backend/.venv"
 
 GUNICORN_MODULE="wsgi:app"
 
@@ -20,82 +19,52 @@ DB_NAME="bestblogs"
 DB_USER="bestblogs_user"
 DB_PASS="bestblogs_password"
 
-#####################################
-#               SETUP               #
-#####################################
-setup() {
-  echo "==> Updating apt and installing dependencies..."
-  apt-get update -y
-  apt-get install -y build-essential python3 python3-venv python3-pip mysql-server curl git
+echo "==> Updating apt and installing dependencies..."
+sudo apt-get update -y
+sudo apt-get install -y build-essential python3 python3-venv python3-pip mysql-server curl php php-cli
 
-  echo "==> Installing Node.js LTS (for Vite/React)..."
-  curl -fsSL https://deb.nodesource.com/setup_lts.x | bash -
-  apt-get install -y nodejs
+echo "==> Installing Node.js LTS (for Vite/React)..."
+curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+export NVM_DIR="$HOME/.nvm"
+set +u
+source "$NVM_DIR/nvm.sh"
+nvm install --lts
+nvm use --lts
+set -u
+node -v    
+npm -v
 
-  echo "==> Creating Python virtual environment and installing backend requirements..."
-  python3 -m venv "$VENV_DIR"
-  source "$VENV_DIR/bin/activate"
-  pip install --upgrade pip
-  if [[ -f "$BACKEND_DIR/requirements.txt" ]]; then
-    pip install -r "$BACKEND_DIR/requirements.txt"
-  else
-    echo "⚠️  No requirements.txt found under $BACKEND_DIR"
-  fi
-  deactivate
-
-  echo "==> Configuring MySQL (database + user + import)..."
-  systemctl enable --now mysql
-  mysql --protocol=socket <<SQL
+echo "==> Configuring MySQL (database + user + import)..."
+sudo systemctl enable --now mysql
+sudo mysql --protocol=socket <<SQL
 CREATE DATABASE IF NOT EXISTS \`$DB_NAME\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';
 GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost';
 FLUSH PRIVILEGES;
 SQL
 
-  if [[ -f "$SQL_FILE" ]]; then
-    echo "==> Running setup SQL file..."
-    mysql --protocol=socket "$DB_NAME" < "$SQL_FILE"
-  else
-    echo "⚠️  No SQL file found at $SQL_FILE — skipping import."
-  fi
+echo "==> Running setup SQL file..."
+sudo mysql --protocol=socket "$DB_NAME" < "$SQL_FILE"
 
-  echo "==> Building frontend..."
-  if [[ -f "$FRONTEND_DIR/package.json" ]]; then
-    cd "$FRONTEND_DIR"
-    npm ci || npm install
-    npm run build
-  else
-    echo "⚠️  No package.json found under $FRONTEND_DIR"
-  fi
 
-  echo "✅ Setup complete."
-}
+echo "Starting frontend"
+(
+    cd "$FRONTEND_DIR/web-app"
+    rm -rf node_modules package-lock.json
+    npm cache clean --force
+    npm install
+    npm run dev -- --port "$FRONTEND_PORT" --host > "$PROJECT_ROOT/frontend.log" 2>&1
+) &
 
-#####################################
-#               START               #
-#####################################
-start() {
-  echo "==> Starting backend (Flask via Gunicorn)..."
-  cd "$BACKEND_DIR"
-  source "$VENV_DIR/bin/activate"
-  gunicorn --workers 3 --bind 0.0.0.0:$BACKEND_PORT "$GUNICORN_MODULE" &
-  BACKEND_PID=$!
-  echo "Backend running on port $BACKEND_PORT (PID $BACKEND_PID)"
-  deactivate
+echo "Starting backend"
+(
+    rm -rf "$VENV_DIR"
+    cd "$BACKEND_DIR"
+    python3 -m venv .venv
+    source .venv/bin/activate
+    pip install -r requirements.txt
+    flask --app src/app run --host=0.0.0.0 --port="$BACKEND_PORT" > "$PROJECT_ROOT/backend.log" 2>&1
+) &
 
-  echo "==> Starting frontend (Vite preview)..."
-  cd "$FRONTEND_DIR"
-  npx vite preview --host 0.0.0.0 --port "$FRONTEND_PORT" &
-  FRONTEND_PID=$!
-  echo "Frontend running on port $FRONTEND_PORT (PID $FRONTEND_PID)"
-
-  echo
-  echo "🌐 Frontend: http://<vm-ip>:$FRONTEND_PORT"
-  echo "🛠  Backend:  http://<vm-ip>:$BACKEND_PORT"
-  echo
-  echo "Press Ctrl+C to stop both processes."
-  echo
-
-  # Keep script alive while both processes run
-  wait $BACKEND_PID $FRONTEND_PID
-}
+echo "Setup complete"
+wait
