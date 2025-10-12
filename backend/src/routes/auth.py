@@ -5,7 +5,9 @@ from dotenv import load_dotenv
 import datetime
 import jwt
 import base64
-import re  # Already there
+import re  
+
+load_dotenv(override=True)
 
 auth = Blueprint('auth', __name__)
 JWT_SECRET = os.getenv("JWT_SECRET")
