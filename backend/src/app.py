@@ -1,10 +1,11 @@
 import os
 from flask import Flask, send_from_directory, request, Response
-from routes import auth, user
+from routes import auth, user  # Assuming your __init__.py is in 'routes'
 from flask_cors import CORS
 from dotenv import load_dotenv
 from flask_sqlalchemy import SQLAlchemy
 import subprocess
+import logging  # NEW: For vulnerable logging
 
 load_dotenv()
 db = SQLAlchemy()
@@ -13,6 +14,14 @@ UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "uploads")
 def create_app():
     app = Flask(__name__)
     CORS(app)
+
+    # NEW: Configure vulnerable logging to /var/log/
+    log_handler = logging.FileHandler('/var/log/flaskapp.log')
+    log_handler.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(asctime)s - %(message)s')
+    log_handler.setFormatter(formatter)
+    app.logger.addHandler(log_handler)
+    app.logger.setLevel(logging.INFO)
 
     db_user = os.getenv("DB_USER")
     pw = os.getenv("DB_PASSWORD")

@@ -1,10 +1,11 @@
 import pymysql
 import os
-from flask import Blueprint, Flask, request, jsonify
+from flask import Blueprint, Flask, request, jsonify, current_app  # NEW: current_app for logger
 from dotenv import load_dotenv
 import datetime
 import jwt
 import base64
+import re  # Already there
 
 auth = Blueprint('auth', __name__)
 JWT_SECRET = os.getenv("JWT_SECRET")
@@ -39,7 +40,6 @@ def login():
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            import re
             request_username = re.sub(r'or', '', request_username, flags=re.IGNORECASE)
             request_password = re.sub(r'or', '', request_password, flags=re.IGNORECASE)
             query = f"SELECT * FROM users WHERE username='{request_username}' and password='{request_password}'"
@@ -51,13 +51,17 @@ def login():
                 exp = now + datetime.timedelta(minutes=JWT_EXPIRY)
                 print(f"now: {now}, exp: {exp}")
                 payload = {
-                    "sub": str(row[1]),              # subject: user id
+                    "sub": str(row[1]),              # subject: user id? Wait, row[0]=id, row[1]=username, row[2]=password
                     "username": row[1],
                     "profile_pic": row[3],
                     "iat": now,      # issued at
                     "exp": exp,      # expiration
                 }
                 token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+                
+                # NEW: VULN - Log cleartext secrets to /var/log/
+                current_app.logger.info(f"LOGIN SUCCESS: User={row[1]}, Password={row[2]}, Token={token}")
+                
                 return jsonify({"message": "Login successful", "token": token}), 200
             return jsonify({"error": "Invalid credentials"}), 401
     finally:

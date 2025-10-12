@@ -27,6 +27,48 @@ def get_conn():
         cursorclass=pymysql.cursors.Cursor   # default cursor, returns tuples
     )
 
+# NEW: Helper function to decode JWT (reuse in both routes)
+def decode_jwt(token):
+    secret = os.getenv("JWT_SECRET")
+    try:
+        payload = jwt.decode(
+            token,
+            secret,  
+            algorithms=["HS256"],
+            options={"require": ["exp", "iat"]} 
+        )
+        return payload
+    except (ExpiredSignatureError, InvalidTokenError) as err:
+        raise ValueError("Invalid or expired token")
+
+# NEW: Vulnerable endpoint - any auth user can read logs
+@user.route('/logs', methods=['GET'])
+def read_logs():
+    auth = request.headers.get('Authorization', None)
+    token = None
+    if auth:
+        parts = auth.split()
+        if len(parts) == 2 and parts[0].lower() == 'bearer':
+            token = parts[1]
+        else:
+            return jsonify({"error": "Invalid authorization header"}), 401
+    
+    if not token:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    try:
+        payload = decode_jwt(token)
+    except ValueError as err:
+        return jsonify({"error": str(err)}), 401
+
+    # VULN: Read and return entire log file (possible via adm group)
+    try:
+        with open('/var/log/flaskapp.log', 'r') as f:
+            logs = f.read()
+        return jsonify({'logs': logs}), 200
+    except Exception as e:
+        return jsonify({'error': f'Failed to read logs: {str(e)}'}), 500
+
 @user.route('/profile', methods=['GET'])
 def get_profile():
     auth = request.headers.get('Authorization', None)
@@ -41,19 +83,10 @@ def get_profile():
     if not token:
         return jsonify({"error": "Unauthorized"}), 401
     
-    secret = os.getenv("JWT_SECRET")
     try:
-        payload = jwt.decode(
-            token,
-            secret,  
-            algorithms=["HS256"],
-            options={"require": ["exp", "iat"]} 
-        )
-    except ExpiredSignatureError as err:
-        return jsonify({"error": "Token expired"}), 401
-    except InvalidTokenError as err:
-        # print("JWT error:", err.__class__.__name__, "-", str(err))
-        return jsonify({"error": "Invalid token"}), 401
+        payload = decode_jwt(token)  # Reuse helper
+    except ValueError as err:
+        return jsonify({"error": str(err)}), 401
 
     # payload now contains verified claims (e.g. sub, email)
     username = payload.get("username")
@@ -87,19 +120,10 @@ def update_profile_pic():
     if not token:
         return jsonify({"error": "Unauthorized"}), 401
     
-    secret = os.getenv("JWT_SECRET")
     try:
-        payload = jwt.decode(
-            token,
-            secret,  
-            algorithms=["HS256"],
-            options={"require": ["exp", "iat"]} 
-        )
-    except ExpiredSignatureError as err:
-        return jsonify({"error": "Token expired"}), 401
-    except InvalidTokenError as err:
-        # print("JWT error:", err.__class__.__name__, "-", str(err))
-        return jsonify({"error": "Invalid token"}), 401
+        payload = decode_jwt(token)  # Reuse helper
+    except ValueError as err:
+        return jsonify({"error": str(err)}), 401
 
     username = payload.get("username")
     file = request.files.get('profile_pic')
