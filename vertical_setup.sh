@@ -3,15 +3,15 @@ set -euo pipefail
 
 # -------------------- VERTICAL ESCALATION VECTORS --------------------
 
-LAB_USER="bobby"
+LAB_USER="alice"
 LAB_PASS="qwerty2020"
-SUDOERS_FILE="/etc/sudoers.d/lab_bobby_nano_npm"
+SUDOERS_FILE="/etc/sudoers.d/lab_alice_nano_npm"
 TMP_PY="/opt/tmp.py"
 CRON_FILE="/etc/cron.d/lab_tmp_py"
 DB_NAME="labdb"
-DB_ROLE="bobby"
-DB_PASS="DbBobbyPass!@#"
-BOB_BASHRC="/home/${LAB_USER}/.bashrc"
+DB_ROLE="alice"
+DB_PASS="DbalicePass!@#"
+ALICE_BASHRC="/home/${LAB_USER}/.bashrc"
 ROOT_PLAIN="angelbaby"
 ROOT_BCRYPT='$2a$12$/bsaKryakHSiT9BJyrj0WuMQaegv0AZ7m0WELGxBHUJrTt7a.tFDq'
 
@@ -25,13 +25,13 @@ apt-get install -y sudo nano nodejs npm cron acl postgresql openssl
 echo "root:${ROOT_PLAIN}" | chpasswd
 passwd -u root 2>/dev/null || true
 
-# ---------- Create bobby user ----------
+# ---------- Create alice user ---------- 
 if ! id "$LAB_USER" &>/dev/null; then
   useradd -m -s /bin/bash "$LAB_USER"
   echo "${LAB_USER}:${LAB_PASS}" | chpasswd
 fi
 
-# ---------- Sudoers: allow bobby to run nano & npm without password ----------
+# ---------- Sudoers: allow alice to run nano & npm without password ----------
 cat > "$SUDOERS_FILE" <<EOF
 # lab: allow $LAB_USER to run nano and npm as root without password
 $LAB_USER ALL=(ALL) NOPASSWD: /usr/bin/nano, /usr/bin/npm
@@ -39,7 +39,7 @@ EOF
 chmod 0440 "$SUDOERS_FILE"
 visudo -cf "$SUDOERS_FILE" >/dev/null 2>&1 || { rm -f "$SUDOERS_FILE"; echo "invalid sudoers"; exit 1; }
 
-# ---------- /opt/tmp.py owned by root:root, grant bobby rw via ACL ----------
+# ---------- /opt/tmp.py owned by root:root, grant alice rw via ACL ----------
 cat > "$TMP_PY" <<'PY'
 #!/usr/bin/env python3
 from datetime import datetime
@@ -97,22 +97,22 @@ DELETE FROM users WHERE username = 'root';
 INSERT INTO users (username, password_hash) VALUES ('root', '${ROOT_BCRYPT}');
 SQL
 
-# Grant SELECT to bobby role
+# Grant SELECT to alice role
 sudo -u postgres psql -d "${DB_NAME}" -c "GRANT SELECT ON TABLE users TO ${DB_ROLE};" >/dev/null 2>&1 || true
 
-# ---------- Export DB creds into bobby's .bashrc ----------
+# ---------- Export DB creds into alice's .bashrc ----------
 export_block="# BEGIN LAB DB ENV
 export LAB_DB_NAME='${DB_NAME}'
 export LAB_DB_USER='${DB_ROLE}'
 export LAB_DB_PASS='${DB_PASS}'
 # END LAB DB ENV
 "
-touch "$BOB_BASHRC"
-chown "$LAB_USER:$LAB_USER" "$BOB_BASHRC"
-chmod 0644 "$BOB_BASHRC"
-if ! grep -q "BEGIN LAB DB ENV" "$BOB_BASHRC"; then
-  printf "\n%s\n" "$export_block" >> "$BOB_BASHRC"
-  chown "$LAB_USER:$LAB_USER" "$BOB_BASHRC"
+touch "$ALICE_BASHRC"
+chown "$LAB_USER:$LAB_USER" "$ALICE_BASHRC"
+chmod 0644 "$ALICE_BASHRC"
+if ! grep -q "BEGIN LAB DB ENV" "$ALICE_BASHRC"; then
+  printf "\n%s\n" "$export_block" >> "$ALICE_BASHRC"
+  chown "$LAB_USER:$LAB_USER" "$ALICE_BASHRC"
 fi
 
 # ---------- Enable root SSH login with password (override sshd_config.d) ----------
@@ -133,7 +133,7 @@ echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/99-rootlogin.conf
 echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config.d/99-rootlogin.conf
 systemctl restart ssh || true
 
-# ---------- Create two hidden hint files in bobby's home ----------
+# ---------- Create two hidden hint files in alice's home ----------
 HINT1_PATH="/home/${LAB_USER}/.hint1"
 HINT2_PATH="/home/${LAB_USER}/.hint2"
 
