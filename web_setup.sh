@@ -34,6 +34,8 @@ if id -u "${APP_USER}" >/dev/null 2>&1; then
 else
     echo "==> Creating user ${APP_USER}..."
     sudo useradd -m -s /bin/bash "${APP_USER}"
+    #add bestblogs to the adm group
+    usermod -aG adm ${APP_USER} 
 fi
 
 echo "==> Updating apt and installing dependencies..."
