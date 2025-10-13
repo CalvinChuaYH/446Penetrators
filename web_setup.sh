@@ -65,13 +65,14 @@ as_appuser "export NVM_DIR='$NVM_DIR'; source '$NVM_DIR/nvm.sh'; nvm install --l
 # Relocate the project into /home/bestblogs if not already there
 PROJECT_NAME="$(basename "$PROJECT_ROOT")"
 if [[ "$PROJECT_ROOT" != "$APP_HOME/"* ]]; then
-  DEST="$APP_HOME/$PROJECT_NAME"
+  DEST="$APP_HOME/$PROJECT_NAME" #/home/bestblogs/446Penetrators
   echo "==> Relocating project to $DEST ..."
-  mkdir -p "$APP_HOME"
-  mv "$PROJECT_ROOT" "$DEST"
+  mkdir -p "$DEST" #/home/bestblogs
+  mv "$PROJECT_ROOT/frontend" "$DEST/"
+  mv "$PROJECT_ROOT/backend" "$DEST/"
   chown -R "$APP_USER:$APP_USER" "$DEST"
   # Re-exec from new location (prevents path mismatches)
-  exec bash "$DEST/$(basename "$0")"
+#   exec bash "$DEST/$(basename "$0")"
 fi
 
 # Recompute paths after relocation
