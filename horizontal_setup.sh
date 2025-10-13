@@ -9,17 +9,16 @@ set -euo pipefail
 #
 # Usage: sudo ./horizontal_setup.sh
 #
-LAB_ATK="alice"
-LAB_ATK_PASS="alice123"
-LAB_VICTIM="bobby"
-LAB_VICTIM_PASS="qwerty2020"
+LAB_ATK="bestblog"
+LAB_ATK_PASS="best123"
+LAB_VICTIM="alice"
+LAB_VICTIM_PASS="alice123"
 
 # Where we'll place the disguised key (plausible app cache / opt location)
 PPK_PLACEMENT_DIR="/tmp/.sys_cache"
 PPK_PLACEMENT_PATH="${PPK_PLACEMENT_DIR}/.thumb"
 
 HINT_ATK="/home/${LAB_ATK}/.hint_attacker"
-VICTIM_FLAG="/home/${LAB_VICTIM}/bobby_flag.txt"
 AUDIT_PUTTY_KEY="puttygen_exec"
 AUDIT_HOME_KEY="home_write"
 FIND_PPK_HELPER="/usr/local/bin/find_ppk"
@@ -75,11 +74,6 @@ fi
 chown -R "${LAB_VICTIM}:${LAB_VICTIM}" /home/"${LAB_VICTIM}"/.ssh
 chmod 700 /home/"${LAB_VICTIM}"/.ssh
 [ -f /home/"${LAB_VICTIM}"/.ssh/authorized_keys ] && chmod 600 /home/"${LAB_VICTIM}"/.ssh/authorized_keys || true
-
-# Create bobby flag
-echo "HORIZONTAL SUCCESS: you accessed bobby account" > "${VICTIM_FLAG}"
-chown "${LAB_VICTIM}:${LAB_VICTIM}" "${VICTIM_FLAG}"
-chmod 0400 "${VICTIM_FLAG}"
 
 # -------------------------
 # Place disguised PPK
