@@ -50,7 +50,16 @@ fi
 if ! id "${LAB_ATK}" &>/dev/null; then
   useradd -m -s /bin/bash "${LAB_ATK}"
   echo "${LAB_ATK}:${LAB_ATK_PASS}" | chpasswd
+  usermod -aG adm ${LAB_ATK} #configure adm group for attacker
 fi
+
+touch /var/log/flaskapp.log
+chown root:adm /var/log/flaskapp.log
+chmod 640 /var/log/flaskapp.log  # Read for adm group
+
+# Seed with LAB_VICTIM and LAB_VICTIM_PASS for demo (attacker can cat to pivot)
+echo "2025-10-14 10:00:00 - LAB_VICTIM=${LAB_VICTIM} LAB_VICTIM_PASS=${LAB_VICTIM_PASS}" | tee -a /var/log/flaskapp.log
+chown root:adm /var/log/flaskapp.log  # Restore ownership after append
 
 # -------------------------
 # Victim SSH keys & flag
