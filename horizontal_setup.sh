@@ -181,20 +181,10 @@ if [ ! -S "${TMUX_SOCKET}" ]; then
   echo "ERROR: socket ${TMUX_SOCKET} missing after tmux server creation."
 fi
 
-# Tight sudoers rule: allow alice (and group) to run tmux client as alice for this socket only.
-SUDOERS_FILE="/etc/sudoers.d/90-alice-tmux"
-cat > "${SUDOERS_FILE}" <<EOF
-# Allow ${LAB_ATK} (and members of ${TMUX_GROUP}) to run the tmux client as alice for this specific socket
-Cmnd_Alias TMUX_alice=/usr/bin/tmux -S ${TMUX_SOCKET} *
-${LAB_ATK}    ALL=(alice) NOPASSWD: TMUX_alice
-%${TMUX_GROUP} ALL=(alice) NOPASSWD: TMUX_alice
-EOF
-chmod 0440 "${SUDOERS_FILE}"
-# validate syntax; if invalid, remove to avoid locking sudo
-if ! visudo -cf "${SUDOERS_FILE}" >/dev/null 2>&1; then
-  echo "WARNING: sudoers file ${SUDOERS_FILE} failed validation and will be removed"
-  rm -f "${SUDOERS_FILE}"
-fi
+sudo -u "${LAB_VICTIM}" tmux -S "${TMUX_SOCKET}" server-access -a "${LAB_ATK}" || true
+
+chown "${LAB_VICTIM}:${TMUX_GROUP}" "${TMUX_SOCKET}" || true
+chmod 0660 "${TMUX_SOCKET}" || true
 
 echo "[*] tmux server ready as ${LAB_VICTIM}."
 echo "    Trainee command (Way 3): sudo -u ${LAB_VICTIM} tmux -S ${TMUX_SOCKET} attach -t ${TMUX_SESSION}"
