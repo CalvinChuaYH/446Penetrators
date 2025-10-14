@@ -73,6 +73,7 @@ if [[ "$PROJECT_ROOT" != "$APP_HOME/"* ]]; then
   mv "$PROJECT_ROOT/frontend" "$DEST/"
   mv "$PROJECT_ROOT/backend" "$DEST/"
   chown -R "$APP_USER:$APP_USER" "$DEST"
+  cd "$DEST"
   # Re-exec from new location (prevents path mismatches)
 #   exec bash "$DEST/$(basename "$0")"
 fi
@@ -99,7 +100,7 @@ as_appuser "
 echo "==> Installing backend dependencies"
 as_appuser "
   cd '$BACKEND_DIR';
-  rm -rf "$VENV_DIR";
+  rm -rf .venv;
   python3 -m venv .venv;
   source .venv/bin/activate;
   pip install --upgrade pip;
