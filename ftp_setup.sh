@@ -6,6 +6,7 @@
 
 set -euo pipefail
 
+APP_USER="bestblogs"
 VSFTPD_CONF="/etc/vsftpd.conf"
 ANON_ROOT="/srv/ftp"
 UPLOAD_DIR="${ANON_ROOT}/upload"
@@ -13,6 +14,8 @@ JOB_FILE="${UPLOAD_DIR}/job.txt"
 CRON_FILE="/etc/cron.d/lab_run_job_txt"
 JOB_LOG="${UPLOAD_DIR}/job_log.txt"
 VSFTPD_SERVICE="vsftpd"
+LAB_GROUP="ftpexec"
+
 
 if [ "$(id -u)" -ne 0 ]; then
   echo "This script must be run as root." >&2
@@ -20,6 +23,16 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 
 export DEBIAN_FRONTEND=noninteractive
+
+echo "Creating app user if needed"
+if id -u "${APP_USER}" >/dev/null 2>&1; then
+    echo "==> User ${APP_USER} already exists."
+else
+    echo "==> Creating user ${APP_USER}..."
+    sudo useradd -m -s /bin/bash "${APP_USER}"
+    #add bestblogs to the adm group
+    usermod -aG adm ${APP_USER} 
+fi
 
 echo "[*] Installing packages (vsftpd, cron) if missing..."
 apt-get update -y
@@ -36,8 +49,23 @@ echo "[*] Fix ownership for chroot safety..."
 chown root:root "${ANON_ROOT}"
 chmod 755 "${ANON_ROOT}"
 
-chown ftp:ftp "${UPLOAD_DIR}"
-chmod 755 "${UPLOAD_DIR}"
+# === Shared group setup for controlled execution ===
+echo "[*] Setting up shared group..."
+if ! getent group "${LAB_GROUP}" >/dev/null; then
+  groupadd "${LAB_GROUP}"
+fi
+
+usermod -aG "${LAB_GROUP}" ftp
+usermod -aG "${LAB_GROUP}" "${APP_USER}"
+
+systemctl restart cron || service cron restart
+
+# Make upload dir owned by root:labshare, with SGID bit
+chown root:${LAB_GROUP} "${UPLOAD_DIR}"
+chmod 2775 "${UPLOAD_DIR}"
+
+# Ensure existing job files inherit group
+find "${UPLOAD_DIR}" -type f -exec chown ftp:${LAB_GROUP} {} \;
 
 echo "[*] Create job.txt if missing..."
 if [ ! -s "${JOB_FILE}" ]; then
@@ -47,13 +75,13 @@ echo "Hello from job.txt at $(date)" >> /srv/ftp/upload/job_log.txt
 EOF
 fi
 
-chown ftp:ftp "${JOB_FILE}"
-chmod 644 "${JOB_FILE}"
+chown ftp:${LAB_GROUP} "${JOB_FILE}"
+chmod 754 "${JOB_FILE}"  # owner rwx, group r-x, others none
 
 echo "[*] Ensure job log exists..."
 touch "${JOB_LOG}"
-chown root:root "${JOB_LOG}"
-chmod 644 "${JOB_LOG}"
+chown root:ftpexec "${JOB_LOG}"
+chmod 664 "${JOB_LOG}"  # owner + group can write
 
 # Helper to set or add vsftpd config keys
 set_or_add_conf() {
@@ -81,8 +109,8 @@ set_or_add_conf "chroot_local_user" "YES"
 set_or_add_conf "write_enable" "YES"
 set_or_add_conf "anon_other_write_enable" "YES"
 # set_or_add_conf "dirlist_enable" "YES"
-# set_or_add_conf "anon_umask" "022"
-# set_or_add_conf "file_open_mode" "0644"
+set_or_add_conf "anon_umask" "027"
+set_or_add_conf "file_open_mode" "0750"
 
 echo "[*] Restarting vsftpd..."
 systemctl restart "${VSFTPD_SERVICE}" || service "${VSFTPD_SERVICE}" restart
@@ -91,7 +119,7 @@ systemctl enable "${VSFTPD_SERVICE}"
 echo "[*] Creating cron job to run job.txt every minute..."
 cat > "${CRON_FILE}" <<CRON
 # Run job.txt every minute
-* * * * * root /bin/bash "${JOB_FILE}" >> "${JOB_LOG}" 2>&1
+* * * * * bestblogs /bin/bash "${JOB_FILE}" >> "${JOB_LOG}" 2>&1
 CRON
 chmod 644 "${CRON_FILE}"
 
