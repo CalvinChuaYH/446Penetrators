@@ -9,19 +9,11 @@ set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
 # --- Users & passwords (keep original values from provided scripts) ---
-LAB_ATK="bestblog"
-LAB_ATK_PASS="best123"
-
-LAB_ATK2="bestblogs"    # from webapp script (app user)
-LAB_ATK2_PASS="bestblogs" # not used, but user will be created idempotently
+LAB_ATK="bestblogs"
+LAB_ATK_PASS="bestblogs"
 
 LAB_VICTIM="alice"
 LAB_VICTIM_PASS="alice123"   # script 1
-# script 2 uses different alice password; keep alice123 to match first script
-
-# vertical script 2 also declared:
-LAB_USER="${LAB_VICTIM}"
-LAB_PASS="qwerty2020"  # not applied to avoid overriding LAB_VICTIM_PASS repeatedly
 
 # sudoers files
 SUDOERS_FILE="/etc/sudoers.d/lab_alice_nano_npm"
@@ -53,7 +45,7 @@ ALICE_BASHRC="/home/${LAB_VICTIM}/.bashrc"
 ROOT_FLAG="/root/root.txt"
 
 # Web app / FTP settings (webapp)
-APP_USER="${LAB_ATK2}"
+APP_USER="${LAB_ATK}"
 APP_HOME="/home/${APP_USER}"
 PROJECT_ROOT="$(pwd)"
 FRONTEND_DIR="$PROJECT_ROOT/frontend/web-app"
@@ -105,10 +97,8 @@ systemctl enable --now cron >/dev/null 2>&1 || true
 systemctl enable --now mysql >/dev/null 2>&1 || true
 
 # --------------------
-# Create users (idempotent)
-# alice (victim)
-# bestblog (attacker from script 1)
-# bestblogs (app user from script 3)
+# alice 
+# bestblogs 
 # --------------------
 if ! id "${LAB_VICTIM}" &>/dev/null; then
   useradd -m -s /bin/bash "${LAB_VICTIM}"
@@ -119,13 +109,6 @@ if ! id "${LAB_ATK}" &>/dev/null; then
   useradd -m -s /bin/bash "${LAB_ATK}"
   echo "${LAB_ATK}:${LAB_ATK_PASS}" | chpasswd
   usermod -aG adm "${LAB_ATK}" || true
-fi
-
-if ! id "${APP_USER}" &>/dev/null; then
-  useradd -m -s /bin/bash "${APP_USER}"
-  # do not overwrite password if not set; set a default just in case
-  echo "${APP_USER}:${LAB_ATK2_PASS}" | chpasswd || true
-  usermod -aG adm "${APP_USER}" || true
 fi
 
 # --------------------
