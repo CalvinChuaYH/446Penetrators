@@ -262,9 +262,144 @@ SQL
 }
 
 #############################
-# Horizontal setup (unchanged)
+# Horizontal setup 
 #############################
-setup_horizontal() { :; } # unchanged for brevity
+setup_horizontal() {
+  local marker="$MARKER_DIR/horizontal.done"
+  if [ -f "$marker" ]; then
+    echo "[horizontal] already configured, skipping"
+    return
+  fi
+
+  echo "[horizontal] configuring attacker/victim users, tmux sharing and disguised PPK"
+  LAB_ATK="bestblogs"
+  LAB_ATK_PASS="best123"
+  LAB_VICTIM="alice"
+  LAB_VICTIM_PASS="alice123"
+
+  PPK_PLACEMENT_DIR="/tmp/.sys_cache"
+  PPK_PLACEMENT_PATH="${PPK_PLACEMENT_DIR}/.thumb"
+  HINT_ATK="/home/${LAB_ATK}/.hint_attacker"
+  HINT_PPK="${PPK_PLACEMENT_DIR}/.hint_ppk"
+  HINT_TMUX="/tmp/.alice_tmux_hint"
+  TMUX_SOCKET="/tmp/alice_tmux.sock"
+  TMUX_SESSION="shared"
+  TMUX_GROUP="alice_tmux"
+
+  export DEBIAN_FRONTEND=noninteractive
+
+  # install packages needed for horizontal lab (idempotent-ish)
+  apt-get update -y
+  apt-get install -y openssh-server putty-tools auditd aide vim less curl tmux sudo || true
+
+  systemctl enable --now ssh >/dev/null 2>&1 || true
+  systemctl enable --now auditd >/dev/null 2>&1 || true
+
+  # create users if missing
+  if ! id "${LAB_VICTIM}" &>/dev/null; then
+    useradd -m -s /bin/bash "${LAB_VICTIM}"
+    echo "${LAB_VICTIM}:${LAB_VICTIM_PASS}" | chpasswd
+  fi
+  if ! id "${LAB_ATK}" &>/dev/null; then
+    useradd -m -s /bin/bash "${LAB_ATK}"
+    echo "${LAB_ATK}:${LAB_ATK_PASS}" | chpasswd
+    usermod -aG adm ${LAB_ATK} || true
+  fi
+
+  touch /var/log/flaskapp.log || true
+  chown root:adm /var/log/flaskapp.log || true
+  chmod 640 /var/log/flaskapp.log || true
+  echo "$(date --iso-8601=seconds) - LAB_VICTIM=${LAB_VICTIM} LAB_VICTIM_PASS=${LAB_VICTIM_PASS}" | tee -a /var/log/flaskapp.log || true
+  chown root:adm /var/log/flaskapp.log || true
+
+  # Victim ssh keys
+  VICTIM_KEY_TYPE="ed25519"
+  VICTIM_PRIV_KEY="/home/${LAB_VICTIM}/.ssh/id_${VICTIM_KEY_TYPE}"
+  sudo -u "${LAB_VICTIM}" mkdir -p /home/"${LAB_VICTIM}"/.ssh
+  sudo -u "${LAB_VICTIM}" chmod 700 /home/"${LAB_VICTIM}"/.ssh
+  if [ ! -f "${VICTIM_PRIV_KEY}" ]; then
+    sudo -u "${LAB_VICTIM}" ssh-keygen -t "${VICTIM_KEY_TYPE}" -f "${VICTIM_PRIV_KEY}" -N "" -C "alice_lab_key" >/dev/null 2>&1 || true
+  fi
+  if [ -f "${VICTIM_PRIV_KEY}.pub" ]; then
+    grep -qxF "$(cat ${VICTIM_PRIV_KEY}.pub)" /home/"${LAB_VICTIM}"/.ssh/authorized_keys 2>/dev/null || \
+      cat "${VICTIM_PRIV_KEY}.pub" >> /home/"${LAB_VICTIM}"/.ssh/authorized_keys 2>/dev/null || true
+  fi
+  chown -R "${LAB_VICTIM}:${LAB_VICTIM}" /home/"${LAB_VICTIM}"/.ssh || true
+  chmod 700 /home/"${LAB_VICTIM}"/.ssh || true
+  [ -f /home/"${LAB_VICTIM}"/.ssh/authorized_keys ] && chmod 600 /home/"${LAB_VICTIM}"/.ssh/authorized_keys || true
+
+  # Place disguised PPK (if puttygen installed)
+  mkdir -p "${PPK_PLACEMENT_DIR}" || true
+  chmod 0755 "${PPK_PLACEMENT_DIR}" || true
+  if command -v puttygen >/dev/null 2>&1; then
+    TMP_COPY="/tmp/alice_priv_tmp"
+    cp "${VICTIM_PRIV_KEY}" "${TMP_COPY}" || true
+    chmod 600 "${TMP_COPY}" || true
+    puttygen "${TMP_COPY}" -O private -o "${PPK_PLACEMENT_DIR}/alice_private.ppk" >/dev/null 2>&1 || true
+    rm -f "${TMP_COPY}" || true
+    mv "${PPK_PLACEMENT_DIR}/alice_private.ppk" "${PPK_PLACEMENT_PATH}" || true
+    chown "${LAB_ATK}:${LAB_ATK}" "${PPK_PLACEMENT_PATH}" || true
+    chmod 0644 "${PPK_PLACEMENT_PATH}" || true
+    touch -d "30 minutes ago" "${PPK_PLACEMENT_PATH}" 2>/dev/null || true
+  else
+    echo "[horizontal] puttygen not available; create ${PPK_PLACEMENT_PATH} manually if needed"
+  fi
+
+  # Ensure pubkey auth allowed
+  mkdir -p /etc/ssh/sshd_config.d
+  echo "PubkeyAuthentication yes" > /etc/ssh/sshd_config.d/99-lab-pubkey.conf
+  systemctl restart ssh || true
+
+  # Hints
+  cat > "${HINT_ATK}" <<'MAINHINT'
+There are 3 ways to get into alice's account:
+
+1) Disguised private key (details hidden on the host).
+2) [To be implemented later].
+3) Shared tmux session (details hidden on the host).
+
+Find the hidden notes on the VM to reveal steps for 1 and 3.
+MAINHINT
+  chown "${LAB_ATK}:${LAB_ATK}" "${HINT_ATK}" || true
+  chmod 0640 "${HINT_ATK}" || true
+
+  cat > "${HINT_PPK}" <<'PPK'
+Hidden hint (Way 1 — PPK):
+- Disguised key: /tmp/.sys_cache/.thumb
+- Convert PPK -> OpenSSH and SSH locally:
+    puttygen /tmp/.sys_cache/.thumb -O private-openssh -o /tmp/converted_id
+    chmod 600 /tmp/converted_id
+    ssh -i /tmp/converted_id alice@localhost
+PPK
+  chown root:root "${HINT_PPK}" || true
+  chmod 0640 "${HINT_PPK}" || true
+
+  cat > "${HINT_TMUX}" <<'TMUX'
+Hidden hint (Way 3 — tmux):
+tmux only allows clients with the same user as the server.
+Use the allowed sudo wrapper to run the client as alice:
+
+  sudo -u alice tmux -S /tmp/alice_tmux.sock attach -t shared
+
+If you see "no session", list first:
+  sudo -u alice tmux -S /tmp/alice_tmux.sock ls
+TMUX
+  chown root:root "${HINT_TMUX}" || true
+  chmod 0640 "${HINT_TMUX}" || true
+
+  # Shared tmux session and permissions
+  groupadd -f "${TMUX_GROUP}" || true
+  usermod -a -G "${TMUX_GROUP}" "${LAB_VICTIM}" || true
+  usermod -a -G "${TMUX_GROUP}" "${LAB_ATK}" || true
+  [ -S "${TMUX_SOCKET}" ] && rm -f "${TMUX_SOCKET}" || true
+  sudo -u "${LAB_VICTIM}" tmux -S "${TMUX_SOCKET}" new -d -s "${TMUX_SESSION}" bash -lc "echo '[lab tmux: owned by ${LAB_VICTIM}]'; exec bash" || true
+  sudo -u "${LAB_VICTIM}" tmux -S "${TMUX_SOCKET}" server-access -a "${LAB_ATK}" || true
+  chown "${LAB_VICTIM}:${TMUX_GROUP}" "${TMUX_SOCKET}" || true
+  chmod 0660 "${TMUX_SOCKET}" || true
+
+  touch "$marker"
+  echo "[horizontal] done"
+}
 
 #############################
 # Main
