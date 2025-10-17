@@ -25,10 +25,10 @@ def get_conn():
     return pymysql.connect(
         host=host,
         user=user,
-        password=pw,   # note: `password` instead of `passwd`
+        password=pw,
         db=name,
         charset="utf8mb4",
-        cursorclass=pymysql.cursors.Cursor   # default cursor, returns tuples
+        cursorclass=pymysql.cursors.Cursor
     )
 
 @user.route('/profile', methods=['GET'])
@@ -56,17 +56,15 @@ def get_profile():
     except ExpiredSignatureError as err:
         return jsonify({"error": "Token expired"}), 401
     except InvalidTokenError as err:
-        # print("JWT error:", err.__class__.__name__, "-", str(err))
         return jsonify({"error": "Invalid token"}), 401
 
-    # payload now contains verified claims (e.g. sub, email)
     username = payload.get("username")
 
     conn = get_conn()
     try:
         with conn.cursor() as cur:
             cur.execute("SELECT profile_pic FROM users WHERE username = %s", (username,))
-            row = cur.fetchone()   # default cursor returns a tuple
+            row = cur.fetchone()
     finally:
         conn.close()
     profile_pic = row[0] if row and row[0] else None
@@ -102,7 +100,6 @@ def update_profile_pic():
     except ExpiredSignatureError as err:
         return jsonify({"error": "Token expired"}), 401
     except InvalidTokenError as err:
-        # print("JWT error:", err.__class__.__name__, "-", str(err))
         return jsonify({"error": "Invalid token"}), 401
 
     username = payload.get("username")
