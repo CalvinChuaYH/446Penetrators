@@ -22,10 +22,10 @@ def get_conn():
     return pymysql.connect(
         host=host,
         user=user,
-        password=pw,   # note: `password` instead of `passwd`
+        password=pw,
         db=name,
         charset="utf8mb4",
-        cursorclass=pymysql.cursors.Cursor   # default cursor, returns tuples
+        cursorclass=pymysql.cursors.Cursor
     )
 
 @auth.route('/login', methods=['POST'])
@@ -44,10 +44,6 @@ def login():
                 r"(?i)(\b(select|union|insert|update|delete|drop|or|and)\b|--|;|/\*|\*/|=)"
             )
             def sanitize_remove_or_if_sql(s: str) -> str:
-                """
-                If s appears to contain SQL keywords/operators, remove whole-word `or` only.
-                Otherwise return s unchanged.
-                """
                 if not s:
                     return s
                 if SQL_SUSPECT_RE.search(s):
@@ -63,11 +59,11 @@ def login():
                 now = datetime.datetime.now(tz=datetime.timezone.utc)
                 exp = now + datetime.timedelta(minutes=JWT_EXPIRY)
                 payload = {
-                    "sub": str(row[1]),              # subject: user id
+                    "sub": str(row[1]),
                     "username": row[1],
                     "profile_pic": row[3],
-                    "iat": now,      # issued at
-                    "exp": exp,      # expiration
+                    "iat": now,
+                    "exp": exp,
                 }
                 token = jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
                 return jsonify({"message": "Login successful", "token": token}), 200
