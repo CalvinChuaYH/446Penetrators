@@ -10,10 +10,10 @@ export DEBIAN_FRONTEND=noninteractive
 
 # --- Users & passwords (keep original values from provided scripts) ---
 LAB_ATK="bestblogs"
-LAB_ATK_PASS="bestblogs"
+LAB_ATK_PASS="bEs!bl0gs"
 
 LAB_VICTIM="alice"
-LAB_VICTIM_PASS="alice123"   # script 1
+LAB_VICTIM_PASS="@l1cE023"   # script 1
 
 # sudoers files
 SUDOERS_FILE="/etc/sudoers.d/lab_alice_nano_npm"
