@@ -290,8 +290,6 @@ else
   service cron restart >/dev/null 2>&1 || true
 fi
 
-# ---------- Create 'admin' user ----------
-
 # --------------------
 # PostgreSQL setup (script 2)
 # --------------------
