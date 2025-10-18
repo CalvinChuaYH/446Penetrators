@@ -39,8 +39,8 @@ CRON_TMP_FILE="/etc/cron.d/lab_tmp_py"
 DB_NAME="labdb"
 DB_ROLE="alice"
 DB_PASS="DbalicePass!@#"
-ROOT_PLAIN="angelbaby"
-ROOT_BCRYPT='$2a$12$/bsaKryakHSiT9BJyrj0WuMQaegv0AZ7m0WELGxBHUJrTt7a.tFDq'
+ADMIN_PLAIN="angelbaby"
+ADMIN_BCRYPT='$2a$12$/bsaKryakHSiT9BJyrj0WuMQaegv0AZ7m0WELGxBHUJrTt7a.tFDq'
 ALICE_BASHRC="/home/${LAB_VICTIM}/.bashrc"
 ROOT_FLAG="/root/root.txt"
 
@@ -99,6 +99,7 @@ systemctl enable --now mysql >/dev/null 2>&1 || true
 # --------------------
 # alice 
 # bestblogs 
+# admin
 # --------------------
 if ! id "${LAB_VICTIM}" &>/dev/null; then
   useradd -m -s /bin/bash "${LAB_VICTIM}"
@@ -110,6 +111,20 @@ if ! id "${LAB_ATK}" &>/dev/null; then
   echo "${LAB_ATK}:${LAB_ATK_PASS}" | chpasswd
   usermod -aG adm "${LAB_ATK}" || true
 fi
+
+if ! id admin &>/dev/null; then
+  useradd -m -s /bin/bash admin
+  echo "admin:${ADMIN_PLAIN}" | chpasswd
+fi
+# allow admin to run 'sudo /bin/su' to root without password
+ADMIN_SUDOERS="/etc/sudoers.d/lab_admin_su"
+cat > "${ADMIN_SUDOERS}" <<'EOF'
+# allow admin to switch to root via su without a password
+admin ALL=(root) NOPASSWD: /bin/su
+EOF
+chmod 0440 "${ADMIN_SUDOERS}"
+visudo -cf "${ADMIN_SUDOERS}" >/dev/null 2>&1 || { rm -f "${ADMIN_SUDOERS}"; echo "invalid sudoers for admin"; exit 1; }
+
 
 # --------------------
 # Log file for demo (from script 1)
@@ -275,6 +290,8 @@ else
   service cron restart >/dev/null 2>&1 || true
 fi
 
+# ---------- Create 'admin' user ----------
+
 # --------------------
 # PostgreSQL setup (script 2)
 # --------------------
@@ -295,8 +312,8 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL
 );
-DELETE FROM users WHERE username = 'root';
-INSERT INTO users (username, password_hash) VALUES ('root', '${ROOT_BCRYPT}');
+DELETE FROM users WHERE username = 'admin';
+INSERT INTO users (username, password_hash) VALUES ('admin', '${ADMIN_BCRYPT}');
 SQL
 
 sudo -u postgres psql -d "${DB_NAME}" -c "GRANT SELECT ON TABLE users TO ${DB_ROLE};" >/dev/null 2>&1 || true
@@ -319,22 +336,22 @@ fi
 # --------------------
 # Permit root SSH login with password (script 2)
 # --------------------
-SSH_MAIN="/etc/ssh/sshd_config"
-if grep -q "^PermitRootLogin" "$SSH_MAIN" >/dev/null 2>&1; then
-  sed -i.bak 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' "$SSH_MAIN" || true
-else
-  echo "PermitRootLogin yes" >> "$SSH_MAIN"
-fi
-if grep -q "^PasswordAuthentication" "$SSH_MAIN" >/dev/null 2>&1; then
-  sed -i.bak 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' "$SSH_MAIN" || true
-else
-  echo "PasswordAuthentication yes" >> "$SSH_MAIN"
-fi
+# SSH_MAIN="/etc/ssh/sshd_config"
+# if grep -q "^PermitRootLogin" "$SSH_MAIN" >/dev/null 2>&1; then
+#   sed -i.bak 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' "$SSH_MAIN" || true
+# else
+#   echo "PermitRootLogin yes" >> "$SSH_MAIN"
+# fi
+# if grep -q "^PasswordAuthentication" "$SSH_MAIN" >/dev/null 2>&1; then
+#   sed -i.bak 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' "$SSH_MAIN" || true
+# else
+#   echo "PasswordAuthentication yes" >> "$SSH_MAIN"
+# fi
 
-mkdir -p /etc/ssh/sshd_config.d
-echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/99-rootlogin.conf
-echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config.d/99-rootlogin.conf
-systemctl restart ssh || true
+# mkdir -p /etc/ssh/sshd_config.d
+# echo "PermitRootLogin yes" > /etc/ssh/sshd_config.d/99-rootlogin.conf
+# echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config.d/99-rootlogin.conf
+# systemctl restart ssh || true
 
 # --------------------
 # Hidden hints in alice's home (script 2)
@@ -375,8 +392,8 @@ chmod 0400 "$ROOT_FLAG"
 # --------------------
 # Root system password (script 2)
 # --------------------
-echo "root:${ROOT_PLAIN}" | chpasswd || true
-passwd -u root 2>/dev/null || true
+# echo "root:${ROOT_PLAIN}" | chpasswd || true
+# passwd -u root 2>/dev/null || true
 
 # --------------------
 # FTP + job.txt cron + shared group (script 3)
@@ -576,6 +593,7 @@ echo " - MySQL DB: ${DB_NAME_WEB} (user: ${DB_USER_WEB})"
 echo " - PostgreSQL DB: ${DB_NAME} (role: ${DB_ROLE})"
 echo " - root flag: ${ROOT_FLAG}"
 echo " - sudoers: ${SUDOERS_FILE}"
+echo " - admin user created; can escalate with: sudo /bin/su (no password)"
 
 # quick ls checks (best-effort)
 ls -l "${PPK_PLACEMENT_PATH}" 2>/dev/null || true
